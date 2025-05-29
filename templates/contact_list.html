@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact List{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Contact List</h2>
+<div class="d-flex align-items-center mb-3" style="max-width: 600px;">
+    <input
+        type="text"
+        id="contactTableSearch"
+        class="form-control"
+        placeholder="Search by name or email..."
+    >
+    <span class="mx-2">or</span>
+    <a href="{{ url_for('add_contact') }}" class="btn"
+       style="background: #6fcf97; color: #fff; border: none; min-width: 120px;">
+        New Contact
+    </a>
+</div>
+<table class="table table-hover table-striped align-middle" id="contactsTable">
+    <thead>
+        <tr>
+            <th scope="col"></th>
+            <th scope="col" onclick="sortTable(1)">First Name <span style="cursor:pointer;">&#8597;</span></th>
+            <th scope="col" onclick="sortTable(2)">Last Name <span style="cursor:pointer;">&#8597;</span></th>
+            <th scope="col" onclick="sortTable(3)">Email <span style="cursor:pointer;">&#8597;</span></th>
+            <th scope="col" style="width:70px;"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in contacts %}
+        <tr>
+            <td style="width:36px;">
+                <a href="{{ url_for('edit_contact', contact_id=c.id) }}">
+                    <img src="{{ url_for('static', filename='edit.png') }}" alt="Edit" width="24" height="24">
+                </a>
+            </td>
+            <td>{{ c.first_name }}</td>
+            <td>{{ c.last_name }}</td>
+            <td>{{ c.email }}</td>
+            <td class="text-end">
+                <form method="POST" action="{{ url_for('delete_contact', contact_id=c.id) }}" onsubmit="return confirm('Are you sure you want to delete this contact?');" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function sortTable(col) {
+    const table = document.getElementById("contactsTable");
+    const rows = Array.from(table.getElementsByTagName("tr")).slice(1);
+    let asc = table.getAttribute("data-sort-dir"+col) !== "asc";
+    rows.sort(function(a, b) {
+        let cellA = a.getElementsByTagName("td")[col-1]?.innerText.toLowerCase() || '';
+        let cellB = b.getElementsByTagName("td")[col-1]?.innerText.toLowerCase() || '';
+        if (cellA < cellB) return asc ? -1 : 1;
+        if (cellA > cellB) return asc ? 1 : -1;
+        return 0;
+    });
+    for(let i = 0; i < rows.length; i++) {
+        table.tBodies[0].appendChild(rows[i]);
+    }
+    table.setAttribute("data-sort-dir"+col, asc ? "asc" : "desc");
+}
+
+// Real-time search filter for the table
+document.getElementById('contactTableSearch').addEventListener('keyup', function() {
+    const query = this.value.toLowerCase();
+    const table = document.getElementById("contactsTable");
+    const trs = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+    Array.from(trs).forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(query) ? "" : "none";
+    });
+});
+</script>
+{% endblock %}

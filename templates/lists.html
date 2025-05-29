@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact Lists{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Contact Lists</h2>
+    <div class="mb-3">
+        <a href="{{ url_for('add_list') }}" class="btn btn-success btn-sm">New List</a>
+    </div>
+    <div class="accordion" id="contactListsAccordion">
+        {% for list in lists %}
+        <div class="card mb-2">
+            <div class="card-header d-flex justify-content-between align-items-center" id="heading{{ list.id }}">
+                <div>
+                    <strong>{{ list.name }}</strong>
+                    <small class="text-muted">({{ list.owner }})</small>
+                </div>
+                <div>
+                    <a class="btn btn-link btn-sm" data-bs-toggle="collapse" href="#collapse{{ list.id }}" role="button" aria-expanded="false" aria-controls="collapse{{ list.id }}">
+                        Show Members
+                    </a>
+                    <a href="{{ url_for('edit_list', list_id=list.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                    <form method="POST" action="{{ url_for('delete_list', list_id=list.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+            <div id="collapse{{ list.id }}" class="collapse" aria-labelledby="heading{{ list.id }}" data-bs-parent="#contactListsAccordion">
+                <div class="card-body">
+                    {% if list.contacts %}
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contact in list.contacts %}
+                            <tr>
+                                <td>{{ contact.first_name }}</td>
+                                <td>{{ contact.last_name }}</td>
+                                <td>{{ contact.email }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <em>No members in this list.</em>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS CDN if not already included in your base.html -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

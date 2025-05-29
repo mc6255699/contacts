@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Contact List{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Edit Contact List</h2>
+    <form method="POST" class="mb-3">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control form-control-sm") }}
+            {% for error in form.name.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control form-control-sm", rows=3) }}
+            {% for error in form.description.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.owner.label(class="form-label") }}
+            {{ form.owner(class="form-control form-control-sm") }}
+            {% for error in form.owner.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-success btn-sm") }}
+            <a href="{{ url_for('lists') }}" class="btn btn-secondary btn-sm">Cancel</a>
+        </div>
+    </form>
+
+    <hr>
+
+    <h4>Add Contacts to List</h4>
+    <div class="mb-3">
+        <input type="text" id="contact-search" class="form-control form-control-sm" placeholder="Search contacts (min 3 chars)">
+    </div>
+    <form id="add-contacts-form">
+        <table class="table table-sm" id="search-results-table" style="display:none;">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody id="search-results-body"></tbody>
+        </table>
+        <button type="submit" class="btn btn-primary btn-sm" id="add-contacts-btn" style="display: none;">Add to List</button>
+    </form>
+    <div id="add-contacts-message"></div>
+
+    <hr>
+    <h5>Current Members</h5>
+    <ul>
+        {% for c in list_obj.contacts %}
+            <li>{{ c.first_name }} {{ c.last_name }} ({{ c.email }})</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const MIN_QUERY_LEN = 3;
+    const searchBox = document.getElementById('contact-search');
+    const resultsTable = document.getElementById('search-results-table');
+    const resultsBody = document.getElementById('search-results-body');
+    const addBtn = document.getElementById('add-contacts-btn');
+    const form = document.getElementById('add-contacts-form');
+    const messageDiv = document.getElementById('add-contacts-message');
+
+    let latestContacts = [];
+
+    searchBox.addEventListener('input', function() {
+        const q = searchBox.value.trim();
+        if(q.length < MIN_QUERY_LEN) {
+            resultsTable.style.display = 'none';
+            addBtn.style.display = 'none';
+            return;
+        }
+        fetch(`/search_contacts?q=${encodeURIComponent(q)}`)
+            .then(resp => resp.json())
+            .then(data => {
+                latestContacts = data;
+                resultsBody.innerHTML = '';
+                if(data.length === 0) {
+                    resultsTable.style.display = 'none';
+                    addBtn.style.display = 'none';
+                    return;
+                }
+                data.forEach(contact => {
+                    // Prevent showing contacts already in the list
+                    {% set member_ids = list_obj.contacts | map(attribute='id') | list %}
+                    if ([{{ member_ids|join(',') }}].includes(contact.id)) return;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="checkbox" name="contact_id" value="${contact.id}"></td>
+                        <td>${contact.first_name} ${contact.last_name}</td>
+                        <td>${contact.email}</td>
+                    `;
+                    resultsBody.appendChild(tr);
+                });
+                resultsTable.style.display = '';
+                addBtn.style.display = '';
+            });
+    });
+
+    form.addEventListener('submit', function(evt) {
+        evt.preventDefault();
+        const checkboxes = resultsBody.querySelectorAll('input[name="contact_id"]:checked');
+        if (checkboxes.length === 0) {
+            messageDiv.textContent = "Please select at least one contact.";
+            messageDiv.className = "text-danger";
+            return;
+        }
+        const contactIds = Array.from(checkboxes).map(cb => cb.value);
+        fetch('{{ url_for("add_contacts_to_list", list_id=list_obj.id) }}', {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({contact_ids: contactIds})
+        })
+        .then(resp => resp.json())
+        .then(res => {
+            if(res.success) {
+                messageDiv.textContent = res.message;
+                messageDiv.className = "text-success";
+                // Optionally: reload the page or update current member list below
+                setTimeout(() => window.location.reload(), 600)  // Refresh to show new members
+            } else {
+                messageDiv.textContent = res.message || "Failed to add contacts.";
+                messageDiv.className = "text-danger";
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

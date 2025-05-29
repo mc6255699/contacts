@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}All Contacts{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 60vh;">
+    <h1 class="mb-4" style="text-align: center;">Simple Contact Manager</h1>
+    <a href="{{ url_for('add_contact') }}" class="btn btn-primary mb-3" style="min-width: 180px;">
+        Create New Contact
+    </a>
+    <input
+        type="text"
+        id="contactSearch"
+        class="form-control mb-3"
+        placeholder="Search contacts by name or email..."
+        style="max-width: 400px; text-align: center;"
+    >
+    <div id="results" class="w-100" style="max-width: 600px;"></div>
+</div>
+
+<script>
+document.getElementById('contactSearch').addEventListener('keyup', function() {
+    const query = this.value.trim();
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = '';
+
+    if (query.length < 3) return;
+
+    fetch(`/search_contacts?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<div class="text-center text-muted">No contacts found.</div>';
+                return;
+            }
+            let html = `<div class="row g-3">`;
+            data.forEach(c => {
+                html += `
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-1">
+                                <a href="/edit/${c.id}" class="text-decoration-none">
+                                    ${c.first_name} ${c.last_name}
+                                </a>
+                            </h5>
+                            <p class="card-text mb-0 text-muted" style="font-size: 0.97em;">
+                                <strong>Email:</strong> ${c.email}
+                            </p>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        })
+        .catch(error => {
+            resultsDiv.innerHTML = '<div class="text-danger text-center">Search failed. Please try again.</div>';
+        });
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Contact{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Edit Contact</h2>
+    <form method="POST" class="mb-3">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.first_name.label(class="form-label") }}
+            {{ form.first_name(class="form-control form-control-sm") }}
+            {% for error in form.first_name.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.last_name.label(class="form-label") }}
+            {{ form.last_name(class="form-control form-control-sm") }}
+            {% for error in form.last_name.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control form-control-sm") }}
+            {% for error in form.email.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-success btn-sm") }}
+            <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm">Cancel</a>
+            <form method="POST" action="{{ url_for('delete_contact', contact_id=contact.id) }}" onsubmit="return confirm('Are you sure you want to delete this contact?');" style="display:inline;">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+        </div>
+    </form>
+</div>
+{% endblock %}
