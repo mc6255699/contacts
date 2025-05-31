@@ -7,12 +7,21 @@
     <h2>Edit Contact List</h2>
     <form method="POST" class="mb-3">
         {{ form.hidden_tag() }}
-        <div class="mb-3">
-            {{ form.name.label(class="form-label") }}
-            {{ form.name(class="form-control form-control-sm") }}
-            {% for error in form.name.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
+        <div class="row mb-3">
+            <div class="col-md-6">
+                {{ form.name.label(class="form-label") }}
+                {{ form.name(class="form-control form-control-sm") }}
+                {% for error in form.name.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                {{ form.owner.label(class="form-label") }}
+                {{ form.owner(class="form-control form-control-sm") }}
+                {% for error in form.owner.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
         </div>
         <div class="mb-3">
             {{ form.description.label(class="form-label") }}
@@ -21,47 +30,62 @@
                 <div class="text-danger">{{ error }}</div>
             {% endfor %}
         </div>
-        <div class="mb-3">
-            {{ form.owner.label(class="form-label") }}
-            {{ form.owner(class="form-control form-control-sm") }}
-            {% for error in form.owner.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
-        </div>
-        <div class="d-flex gap-2">
-            {{ form.submit(class="btn btn-success btn-sm") }}
-            <a href="{{ url_for('lists') }}" class="btn btn-secondary btn-sm">Cancel</a>
-        </div>
+
+        <!-- Save List button moved to the bottom outside the form fields -->
     </form>
 
     <hr>
 
-    <h4>Add Contacts to List</h4>
+    <h5>Current Members</h5>
+    <table class="table table-sm" id="current-members-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in list_obj.contacts %}
+            <tr data-contact-id="{{ c.id }}">
+                <td>{{ c.first_name }} {{ c.last_name }}</td>
+                <td>{{ c.email }}</td>
+                <td>
+                    <button type="button" class="btn btn-link text-danger btn-sm remove-contact-btn" title="Remove">
+                        &minus;
+                    </button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div id="remove-contact-message"></div>
+
+    <hr>
+
+    <h4>Add Contacts</h4>
     <div class="mb-3">
         <input type="text" id="contact-search" class="form-control form-control-sm" placeholder="Search contacts (min 3 chars)">
     </div>
-    <form id="add-contacts-form">
-        <table class="table table-sm" id="search-results-table" style="display:none;">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Name</th>
-                    <th>Email</th>
-                </tr>
-            </thead>
-            <tbody id="search-results-body"></tbody>
-        </table>
-        <button type="submit" class="btn btn-primary btn-sm" id="add-contacts-btn" style="display: none;">Add to List</button>
-    </form>
+    <table class="table table-sm" id="search-results-table" style="display:none;">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody id="search-results-body"></tbody>
+    </table>
     <div id="add-contacts-message"></div>
 
-    <hr>
-    <h5>Current Members</h5>
-    <ul>
-        {% for c in list_obj.contacts %}
-            <li>{{ c.first_name }} {{ c.last_name }} ({{ c.email }})</li>
-        {% endfor %}
-    </ul>
+    <!-- Save button at the very bottom, right-aligned -->
+    <div class="d-flex justify-content-end mt-4">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            {{ form.submit(class="btn btn-success btn-sm") }}
+        </form>
+    </div>
 </div>
 
 <script>
@@ -70,72 +94,130 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchBox = document.getElementById('contact-search');
     const resultsTable = document.getElementById('search-results-table');
     const resultsBody = document.getElementById('search-results-body');
-    const addBtn = document.getElementById('add-contacts-btn');
-    const form = document.getElementById('add-contacts-form');
     const messageDiv = document.getElementById('add-contacts-message');
 
-    let latestContacts = [];
+    // Get initial current member IDs from table rows
+    function getCurrentMemberIds() {
+        return Array.from(document.querySelectorAll('#current-members-table tbody tr'))
+            .map(tr => parseInt(tr.getAttribute('data-contact-id')));
+    }
 
     searchBox.addEventListener('input', function() {
         const q = searchBox.value.trim();
-        if(q.length < MIN_QUERY_LEN) {
+        if (q.length < MIN_QUERY_LEN) {
             resultsTable.style.display = 'none';
-            addBtn.style.display = 'none';
             return;
         }
-        fetch(`/search_contacts?q=${encodeURIComponent(q)}`)
+        const exclude_ids = getCurrentMemberIds();
+        const params = new URLSearchParams({
+            q: q,
+            exclude_ids: exclude_ids.join(',')
+        });
+        fetch(`/search_contacts?${params.toString()}`)
             .then(resp => resp.json())
             .then(data => {
-                latestContacts = data;
                 resultsBody.innerHTML = '';
-                if(data.length === 0) {
+                if (data.length === 0) {
                     resultsTable.style.display = 'none';
-                    addBtn.style.display = 'none';
                     return;
                 }
                 data.forEach(contact => {
-                    // Prevent showing contacts already in the list
-                    {% set member_ids = list_obj.contacts | map(attribute='id') | list %}
-                    if ([{{ member_ids|join(',') }}].includes(contact.id)) return;
-
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><input type="checkbox" name="contact_id" value="${contact.id}"></td>
+                        <td>
+                            <button type="button" class="btn btn-success btn-sm add-contact-btn" title="Add" data-contact-id="${contact.id}">+</button>
+                        </td>
                         <td>${contact.first_name} ${contact.last_name}</td>
                         <td>${contact.email}</td>
                     `;
                     resultsBody.appendChild(tr);
                 });
                 resultsTable.style.display = '';
-                addBtn.style.display = '';
-            });
-    });
 
-    form.addEventListener('submit', function(evt) {
-        evt.preventDefault();
-        const checkboxes = resultsBody.querySelectorAll('input[name="contact_id"]:checked');
-        if (checkboxes.length === 0) {
-            messageDiv.textContent = "Please select at least one contact.";
-            messageDiv.className = "text-danger";
-            return;
-        }
-        const contactIds = Array.from(checkboxes).map(cb => cb.value);
+                // Attach event to each "+" button
+            document.querySelectorAll('.add-contact-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const contactId = this.getAttribute('data-contact-id');
         fetch('{{ url_for("add_contacts_to_list", list_id=list_obj.id) }}', {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({contact_ids: contactIds})
+            body: JSON.stringify({contact_ids: [contactId]})
         })
         .then(resp => resp.json())
         .then(res => {
-            if(res.success) {
-                messageDiv.textContent = res.message;
+            if (res.success) {
+                messageDiv.textContent = res.message || "Contact added.";
                 messageDiv.className = "text-success";
-                // Optionally: reload the page or update current member list below
-                setTimeout(() => window.location.reload(), 600)  // Refresh to show new members
+                // Remove the just-added row from search results
+                this.closest('tr').remove();
+                // Add the contact to the current members table in the DOM
+                // res.new_contacts should contain the full contact info; ensure your backend returns it
+                let c = res.new_contact;
+                if (c) {
+                    const tbody = document.querySelector('#current-members-table tbody');
+                    const tr = document.createElement('tr');
+                    tr.setAttribute('data-contact-id', c.id);
+                    tr.innerHTML = `
+                        <td>${c.first_name} ${c.last_name}</td>
+                        <td>${c.email}</td>
+                        <td>
+                            <button type="button" class="btn btn-link text-danger btn-sm remove-contact-btn" title="Remove">&minus;</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    // Attach the remove event to the new button
+                    tr.querySelector('.remove-contact-btn').addEventListener('click', function() {
+                        fetch(`{{ url_for('remove_contact_from_list', list_id=list_obj.id, contact_id=0) }}`.replace('0', c.id), {
+                            method: 'POST',
+                            headers: {'X-Requested-With': 'XMLHttpRequest'}
+                        })
+                        .then(resp => resp.json())
+                        .then(res => {
+                            const msgDiv = document.getElementById('remove-contact-message');
+                            if (res.success) {
+                                tr.remove();
+                                msgDiv.textContent = res.message;
+                                msgDiv.className = "text-success";
+                            } else {
+                                msgDiv.textContent = res.message || "Failed to remove contact.";
+                                msgDiv.className = "text-danger";
+                            }
+                        });
+                    });
+                }
             } else {
-                messageDiv.textContent = res.message || "Failed to add contacts.";
+                messageDiv.textContent = res.message || "Failed to add contact.";
                 messageDiv.className = "text-danger";
             }
+        });
+    });
+});
+
+            });
+    });
+
+    // Remove contact from list via AJAX
+    document.querySelectorAll('.remove-contact-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tr = this.closest('tr');
+            const contactId = tr.getAttribute('data-contact-id');
+            fetch(`{{ url_for('remove_contact_from_list', list_id=list_obj.id, contact_id=0) }}`.replace('0', contactId), {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(resp => resp.json())
+            .then(res => {
+                const msgDiv = document.getElementById('remove-contact-message');
+                if (res.success) {
+                    tr.remove();
+                    msgDiv.textContent = res.message;
+                    msgDiv.className = "text-success";
+                } else {
+                    msgDiv.textContent = res.message || "Failed to remove contact.";
+                    msgDiv.className = "text-danger";
+                }
+            });
         });
     });
 });

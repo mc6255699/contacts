@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Contacts{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Upload Contacts CSV</h2>
+    <form method="POST" enctype="multipart/form-data" class="mb-4">
+        <div class="mb-3">
+            <input type="file" name="csv_file" accept=".csv" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Upload and Import</button>
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="list-unstyled">
+        {% for category, message in messages %}
+          <li class="alert alert-{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% if rejected_rows %}
+        <h4>Rejected Rows</h4>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Row #</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Email</th>
+                    <th>Reason for Rejection</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in rejected_rows %}
+                <tr>
+                    <td>{{ row.rownum }}</td>
+                    <td>{{ row.data[0] if row.data|length > 0 else "" }}</td>
+                    <td>{{ row.data[1] if row.data|length > 1 else "" }}</td>
+                    <td>{{ row.data[2] if row.data|length > 2 else "" }}</td>
+                    <td>{{ row.reason }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+{% endblock %}

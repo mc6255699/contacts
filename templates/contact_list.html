@@ -1,80 +1,215 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block title %}Contact List{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Contact List</h2>
-<div class="d-flex align-items-center mb-3" style="max-width: 600px;">
-    <input
-        type="text"
-        id="contactTableSearch"
-        class="form-control"
-        placeholder="Search by name or email..."
-    >
-    <span class="mx-2">or</span>
-    <a href="{{ url_for('add_contact') }}" class="btn"
-       style="background: #6fcf97; color: #fff; border: none; min-width: 120px;">
-        New Contact
-    </a>
+<style>
+    .action-btn-img {
+        vertical-align: middle;
+        margin-right: 4px;
+        cursor: pointer;
+        transition: box-shadow 0.2s;
+    }
+    .action-btn-img:hover, .action-btn-img:focus {
+        box-shadow: 0 0 3px #888;
+    }
+    .accordion-row {
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+    }
+    .accordion-content {
+        padding: 12px 32px;
+        font-size: 0.96em;
+    }
+    .accordion-content ul {
+        margin-bottom: 0;
+        padding-left: 20px;
+    }
+    .accordion-content li {
+        margin-bottom: 3px;
+    }
+    .actions-cell {
+        position: relative;
+        min-width: 90px;
+        white-space: nowrap;
+    }
+    #contact-search {
+        margin-bottom: 16px;
+        max-width: 350px;
+        display: inline-block;
+    }
+</style>
+
+<h1 class="mb-3">All Contacts</h1>
+<div class="mb-3">
+    <input type="text" class="form-control form-control-sm" id="contact-search" placeholder="Search contacts (min 3 characters)">
 </div>
-<table class="table table-hover table-striped align-middle" id="contactsTable">
+<div class="table-responsive">
+<table class="table table-sm table-striped align-middle mb-2" id="contacts-table">
     <thead>
         <tr>
-            <th scope="col"></th>
-            <th scope="col" onclick="sortTable(1)">First Name <span style="cursor:pointer;">&#8597;</span></th>
-            <th scope="col" onclick="sortTable(2)">Last Name <span style="cursor:pointer;">&#8597;</span></th>
-            <th scope="col" onclick="sortTable(3)">Email <span style="cursor:pointer;">&#8597;</span></th>
-            <th scope="col" style="width:70px;"></th>
+            <th>First</th>
+            <th>Last</th>
+            <th>Email</th>
+            <th style="width:90px;">Actions</th>
         </tr>
     </thead>
     <tbody>
-        {% for c in contacts %}
-        <tr>
-            <td style="width:36px;">
-                <a href="{{ url_for('edit_contact', contact_id=c.id) }}">
-                    <img src="{{ url_for('static', filename='edit.png') }}" alt="Edit" width="24" height="24">
+        {% for contact in contacts %}
+        <tr data-contact-id="{{ contact.id }}">
+            <td>{{ contact.first_name }}</td>
+            <td>{{ contact.last_name }}</td>
+            <td>{{ contact.email }}</td>
+            <td class="actions-cell">
+                <button type="button"
+                    class="btn btn-link p-0 m-0 toggle-lists-btn"
+                    data-contact-id="{{ contact.id }}"
+                    title="Show Lists"
+                    style="margin-right:4px;">
+                    <img src="{{ url_for('static', filename='search.png') }}" alt="Lists" height="20" class="action-btn-img">
+                </button>
+                <a href="{{ url_for('edit_contact', contact_id=contact.id) }}" title="Edit">
+                    <img src="{{ url_for('static', filename='edit.png') }}" alt="Edit" height="20" class="action-btn-img">
                 </a>
-            </td>
-            <td>{{ c.first_name }}</td>
-            <td>{{ c.last_name }}</td>
-            <td>{{ c.email }}</td>
-            <td class="text-end">
-                <form method="POST" action="{{ url_for('delete_contact', contact_id=c.id) }}" onsubmit="return confirm('Are you sure you want to delete this contact?');" style="display:inline;">
-                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                <form action="{{ url_for('delete_contact', contact_id=contact.id) }}" method="post" style="display: inline;">
+                    <button type="submit" style="border: none; background: none; padding: 0;" title="Delete" onclick="return confirm('Delete this contact?');">
+                        <img src="{{ url_for('static', filename='trash.png') }}" alt="Delete" height="20" class="action-btn-img">
+                    </button>
                 </form>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav>
+  <ul class="pagination">
+    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('contacts', page=1, search=request.args.get('search')) }}">&laquo; First</a>
+    </li>
+    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('contacts', page=pagination.prev_num, search=request.args.get('search')) if pagination.has_prev else '#' }}">&lsaquo; Prev</a>
+    </li>
+    <li class="page-item active">
+      <span class="page-link">
+        Page {{ pagination.page }} of {{ pagination.pages }}
+      </span>
+    </li>
+    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('contacts', page=pagination.next_num, search=request.args.get('search')) if pagination.has_next else '#' }}">Next &rsaquo;</a>
+    </li>
+    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('contacts', page=pagination.pages, search=request.args.get('search')) }}">Last &raquo;</a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
 
 <script>
-function sortTable(col) {
-    const table = document.getElementById("contactsTable");
-    const rows = Array.from(table.getElementsByTagName("tr")).slice(1);
-    let asc = table.getAttribute("data-sort-dir"+col) !== "asc";
-    rows.sort(function(a, b) {
-        let cellA = a.getElementsByTagName("td")[col-1]?.innerText.toLowerCase() || '';
-        let cellB = b.getElementsByTagName("td")[col-1]?.innerText.toLowerCase() || '';
-        if (cellA < cellB) return asc ? -1 : 1;
-        if (cellA > cellB) return asc ? 1 : -1;
-        return 0;
-    });
-    for(let i = 0; i < rows.length; i++) {
-        table.tBodies[0].appendChild(rows[i]);
-    }
-    table.setAttribute("data-sort-dir"+col, asc ? "asc" : "desc");
-}
+document.addEventListener('DOMContentLoaded', function() {
+    let openAccordionRow = null;
 
-// Real-time search filter for the table
-document.getElementById('contactTableSearch').addEventListener('keyup', function() {
-    const query = this.value.toLowerCase();
-    const table = document.getElementById("contactsTable");
-    const trs = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr");
-    Array.from(trs).forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(query) ? "" : "none";
+    function closeAccordionRow() {
+        if (openAccordionRow) {
+            openAccordionRow.remove();
+            openAccordionRow = null;
+        }
+    }
+
+    document.querySelectorAll('.toggle-lists-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            const contactId = btn.getAttribute('data-contact-id');
+            const tr = btn.closest('tr');
+            // Check if an accordion is already open and close if needed
+            if (openAccordionRow && openAccordionRow.previousSibling === tr) {
+                closeAccordionRow();
+                return;
+            }
+            closeAccordionRow(); // Always close before opening
+
+            // Insert details row just after clicked row
+            const newRow = document.createElement('tr');
+            newRow.className = "accordion-row";
+            newRow.innerHTML = `
+                <td colspan="4">
+                    <div class="accordion-content" id="accordion-content-${contactId}">
+                        <em>Loading lists...</em>
+                    </div>
+                </td>
+            `;
+            tr.parentNode.insertBefore(newRow, tr.nextSibling);
+            openAccordionRow = newRow;
+
+            // Fetch lists via AJAX
+            fetch(`/contact/${contactId}/lists`)
+              .then(resp => resp.json())
+              .then(lists => {
+                  const div = document.getElementById('accordion-content-' + contactId);
+                  if (!lists.length) {
+                      div.innerHTML = `<em>This contact is not a member of any lists.</em>`;
+                  } else {
+                      let html = `<strong>Member of:</strong><ul>`;
+                      lists.forEach(l => {
+                          html += `<li><a href="/lists/edit/${l.id}" class="text-primary" style="text-decoration:underline;">${l.name}</a> <small class="text-muted">(${l.owner})</small></li>`;
+                      });
+                      html += `</ul>`;
+                      div.innerHTML = html;
+                  }
+              })
+              .catch(() => {
+                  const div = document.getElementById('accordion-content-' + contactId);
+                  div.innerHTML = `<em>Error loading data...</em>`;
+              });
+        });
     });
+
+    document.body.addEventListener('click', function(e) {
+        if (
+            openAccordionRow &&
+            !e.target.closest('.toggle-lists-btn') &&
+            !e.target.closest('.accordion-content')
+        ) {
+            closeAccordionRow();
+        }
+    }, true);
+
+    // Contact search filtering
+    let searchTimeout = null;
+    const searchBox = document.getElementById('contact-search');
+    searchBox.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        let q = this.value.trim();
+        if (q.length >= 3) {
+            searchTimeout = setTimeout(function () {
+                // Always go to page 1 for new search
+                window.location.href = updateURLParameter(window.location.href, 'search', q, 'page', 1);
+            }, 300);
+        } else if (q.length === 0) {
+            // Clear the search, also back to page 1
+            window.location.href = updateURLParameter(window.location.href, 'search', '', 'page', 1);
+        }
+    });
+
+    // Helper to update a parameter (or remove), keeps others
+    function updateURLParameter(url, param, paramVal, pageParam, pageVal) {
+        let urlObj = new URL(url, window.location.origin);
+        if (paramVal) {
+            urlObj.searchParams.set(param, paramVal);
+        } else {
+            urlObj.searchParams.delete(param);
+        }
+        if (pageParam && pageVal) {
+            urlObj.searchParams.set(pageParam, pageVal);
+        }
+        return urlObj.pathname + urlObj.search;
+    }
+
+    // Set searchbox to current search for UX
+    {% if request.args.get('search') %}
+    searchBox.value = "{{ request.args.get('search')|e }}";
+    {% endif %}
 });
 </script>
 {% endblock %}
