@@ -30,56 +30,36 @@
                 <div class="text-danger">{{ error }}</div>
             {% endfor %}
         </div>
-
-        <!-- Save List button moved to the bottom outside the form fields -->
     </form>
 
-    <hr>
+    <div class="card shadow-sm mb-4"
+         style="background: #f4f5f7; border: 1px solid #ddd;">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Add Contacts</h5>
+            <div class="mb-3">
+                <input type="text" id="contact-search" class="form-control form-control-sm" placeholder="Search contacts (min 3 chars)">
+            </div>
+            <table class="table table-sm" id="search-results-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody id="search-results-body"></tbody>
+            </table>
+            <div id="add-contacts-message"></div>
+        </div>
+    </div>
 
     <h5>Current Members</h5>
-    <table class="table table-sm" id="current-members-table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Remove</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for c in list_obj.contacts %}
-            <tr data-contact-id="{{ c.id }}">
-                <td>{{ c.first_name }} {{ c.last_name }}</td>
-                <td>{{ c.email }}</td>
-                <td>
-                    <button type="button" class="btn btn-link text-danger btn-sm remove-contact-btn" title="Remove">
-                        &minus;
-                    </button>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+    <div id="current-members-container"></div>
+    <div class="d-flex justify-content-between align-items-center">
+        <div id="members-pagination"></div>
+    </div>
     <div id="remove-contact-message"></div>
 
-    <hr>
-
-    <h4>Add Contacts</h4>
-    <div class="mb-3">
-        <input type="text" id="contact-search" class="form-control form-control-sm" placeholder="Search contacts (min 3 chars)">
-    </div>
-    <table class="table table-sm" id="search-results-table" style="display:none;">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Name</th>
-                <th>Email</th>
-            </tr>
-        </thead>
-        <tbody id="search-results-body"></tbody>
-    </table>
-    <div id="add-contacts-message"></div>
-
-    <!-- Save button at the very bottom, right-aligned -->
     <div class="d-flex justify-content-end mt-4">
         <form method="POST">
             {{ form.hidden_tag() }}
@@ -88,18 +68,122 @@
     </div>
 </div>
 
+<style>
+    .card {
+        border-radius: 0.45rem;
+    }
+    #search-results-table th, #search-results-table td {
+        vertical-align: middle;
+    }
+</style>
+
 <script>
+const MEMBERS_PER_PAGE = 10;
+const trashIconUrl = "{{ url_for('static', filename='trash.png') }}";
+
+// Collect and sort contacts by last name, then first name
+const membersData = [
+    {% for c in list_obj.contacts|sort(attribute="last_name") %}
+    {
+        id: {{ c.id }},
+        first_name: "{{ c.first_name|e }}",
+        last_name: "{{ c.last_name|e }}",
+        email: "{{ c.email|e }}"
+    }{% if not loop.last %},{% endif -%}
+    {% endfor %}
+];
+
+let currentPage = 1;
+
+function renderMembers(page = 1) {
+    const start = (page - 1) * MEMBERS_PER_PAGE;
+    const end = start + MEMBERS_PER_PAGE;
+    const items = membersData.slice(start, end);
+
+    let html = '<table class="table table-sm" id="current-members-table"><thead><tr><th>Name</th><th>Email</th><th>Remove</th></tr></thead><tbody>';
+    for (const c of items) {
+        html += `
+            <tr data-contact-id="${c.id}">
+                <td>${c.first_name} ${c.last_name}</td>
+                <td>${c.email}</td>
+                <td>
+                    <button type="button" class="btn btn-link text-danger btn-sm remove-contact-btn" title="Remove">
+                        <img src="${trashIconUrl}" alt="Remove" width="18" height="18" />
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+    html += '</tbody></table>';
+    document.getElementById('current-members-container').innerHTML = html;
+
+    // Attach remove handlers
+    document.querySelectorAll('.remove-contact-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tr = this.closest('tr');
+            const contactId = tr.getAttribute('data-contact-id');
+            fetch(`{{ url_for('remove_contact_from_list', list_id=list_obj.id, contact_id=0) }}`.replace('0', contactId), {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(resp => resp.json())
+            .then(res => {
+                const msgDiv = document.getElementById('remove-contact-message');
+                if (res.success) {
+                    // Remove from membersData array
+                    const idx = membersData.findIndex(m => m.id == contactId);
+                    if (idx > -1) membersData.splice(idx, 1);
+                    // If last page is now empty, go back a page
+                    const totalPages = Math.ceil(membersData.length / MEMBERS_PER_PAGE);
+                    if (currentPage > totalPages) currentPage = totalPages > 0 ? totalPages : 1;
+                    renderMembers(currentPage);
+                    msgDiv.textContent = res.message;
+                    msgDiv.className = "text-success";
+                } else {
+                    msgDiv.textContent = res.message || "Failed to remove contact.";
+                    msgDiv.className = "text-danger";
+                }
+            });
+        });
+    });
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(membersData.length / MEMBERS_PER_PAGE);
+    if (totalPages < 2) {
+        document.getElementById('members-pagination').innerHTML = "";
+        return;
+    }
+    let html = '<nav><ul class="pagination pagination-sm mb-0">';
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<li class="page-item${i === currentPage ? ' active' : ''}">
+                    <button type="button" class="page-link" data-page="${i}">${i}</button>
+                </li>`;
+    }
+    html += '</ul></nav>';
+    document.getElementById('members-pagination').innerHTML = html;
+
+    document.querySelectorAll('#members-pagination .page-link').forEach(btn => {
+        btn.onclick = function() {
+            currentPage = parseInt(this.getAttribute('data-page'));
+            renderMembers(currentPage);
+        };
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    renderMembers(currentPage);
+
+    // --- Add Contacts JS (existing logic, using the trash icon for Remove) ---
     const MIN_QUERY_LEN = 3;
     const searchBox = document.getElementById('contact-search');
     const resultsTable = document.getElementById('search-results-table');
     const resultsBody = document.getElementById('search-results-body');
     const messageDiv = document.getElementById('add-contacts-message');
 
-    // Get initial current member IDs from table rows
     function getCurrentMemberIds() {
-        return Array.from(document.querySelectorAll('#current-members-table tbody tr'))
-            .map(tr => parseInt(tr.getAttribute('data-contact-id')));
+        return membersData.map(c => c.id);
     }
 
     searchBox.addEventListener('input', function() {
@@ -134,91 +218,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 resultsTable.style.display = '';
 
-                // Attach event to each "+" button
-            document.querySelectorAll('.add-contact-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const contactId = this.getAttribute('data-contact-id');
-        fetch('{{ url_for("add_contacts_to_list", list_id=list_obj.id) }}', {
-            method: "POST",
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({contact_ids: [contactId]})
-        })
-        .then(resp => resp.json())
-        .then(res => {
-            if (res.success) {
-                messageDiv.textContent = res.message || "Contact added.";
-                messageDiv.className = "text-success";
-                // Remove the just-added row from search results
-                this.closest('tr').remove();
-                // Add the contact to the current members table in the DOM
-                // res.new_contacts should contain the full contact info; ensure your backend returns it
-                let c = res.new_contact;
-                if (c) {
-                    const tbody = document.querySelector('#current-members-table tbody');
-                    const tr = document.createElement('tr');
-                    tr.setAttribute('data-contact-id', c.id);
-                    tr.innerHTML = `
-                        <td>${c.first_name} ${c.last_name}</td>
-                        <td>${c.email}</td>
-                        <td>
-                            <button type="button" class="btn btn-link text-danger btn-sm remove-contact-btn" title="Remove">&minus;</button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-
-                    // Attach the remove event to the new button
-                    tr.querySelector('.remove-contact-btn').addEventListener('click', function() {
-                        fetch(`{{ url_for('remove_contact_from_list', list_id=list_obj.id, contact_id=0) }}`.replace('0', c.id), {
-                            method: 'POST',
-                            headers: {'X-Requested-With': 'XMLHttpRequest'}
+                document.querySelectorAll('.add-contact-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const contactId = this.getAttribute('data-contact-id');
+                        fetch('{{ url_for("add_contacts_to_list", list_id=list_obj.id) }}', {
+                            method: "POST",
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({contact_ids: [contactId]})
                         })
                         .then(resp => resp.json())
                         .then(res => {
-                            const msgDiv = document.getElementById('remove-contact-message');
                             if (res.success) {
-                                tr.remove();
-                                msgDiv.textContent = res.message;
-                                msgDiv.className = "text-success";
+                                messageDiv.textContent = res.message || "Contact added.";
+                                messageDiv.className = "text-success";
+                                // Remove the just-added row from search results
+                                this.closest('tr').remove();
+                                let c = res.new_contact;
+                                if (c) {
+                                    // Add new contact to membersData and re-sort, re-render
+                                    membersData.push({
+                                        id: c.id,
+                                        first_name: c.first_name,
+                                        last_name: c.last_name,
+                                        email: c.email
+                                    });
+                                    // Sort by last name, then first name
+                                    membersData.sort(function(a, b) {
+                                        let ln = a.last_name.localeCompare(b.last_name);
+                                        if (ln !== 0) return ln;
+                                        return a.first_name.localeCompare(b.first_name);
+                                    });
+                                    renderMembers(currentPage);
+                                }
                             } else {
-                                msgDiv.textContent = res.message || "Failed to remove contact.";
-                                msgDiv.className = "text-danger";
+                                messageDiv.textContent = res.message || "Failed to add contact.";
+                                messageDiv.className = "text-danger";
                             }
                         });
                     });
-                }
-            } else {
-                messageDiv.textContent = res.message || "Failed to add contact.";
-                messageDiv.className = "text-danger";
-            }
-        });
-    });
-});
-
+                });
             });
-    });
-
-    // Remove contact from list via AJAX
-    document.querySelectorAll('.remove-contact-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tr = this.closest('tr');
-            const contactId = tr.getAttribute('data-contact-id');
-            fetch(`{{ url_for('remove_contact_from_list', list_id=list_obj.id, contact_id=0) }}`.replace('0', contactId), {
-                method: 'POST',
-                headers: {'X-Requested-With': 'XMLHttpRequest'}
-            })
-            .then(resp => resp.json())
-            .then(res => {
-                const msgDiv = document.getElementById('remove-contact-message');
-                if (res.success) {
-                    tr.remove();
-                    msgDiv.textContent = res.message;
-                    msgDiv.className = "text-success";
-                } else {
-                    msgDiv.textContent = res.message || "Failed to remove contact.";
-                    msgDiv.className = "text-danger";
-                }
-            });
-        });
     });
 });
 </script>

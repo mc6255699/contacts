@@ -5,6 +5,7 @@ from forms import ContactForm, ContactListForm
 from werkzeug.utils import secure_filename
 import csv
 import io
+from io import TextIOWrapper
 from models import Contact
 from sqlalchemy import or_
 from config import Config
@@ -208,7 +209,6 @@ def add_list():
         return redirect(url_for('lists'))
     return render_template('add_list.html', form=form)
 
-
 @app.route('/search_lists')
 def search_lists():
     q = request.args.get('q', '', type=str)
@@ -257,26 +257,6 @@ def delete_list(list_id):
         db.session.rollback()
         flash('Error: Could not delete list.', 'danger')
     return redirect(url_for('lists'))
-
-# @app.route('/lists/<int:list_id>/add_contacts', methods=['POST'])
-# def add_contacts_to_list(list_id):
-#     list_obj = ContactList.query.get_or_404(list_id)
-#     data = request.get_json()
-#     contact_ids = data.get('contact_ids', [])
-#     if not contact_ids:
-#         return jsonify(success=False, message="No contacts selected"), 400
-#
-#     contacts_to_add = Contact.query.filter(Contact.id.in_(contact_ids)).all()
-#     # Prevent duplicates
-#     for contact in contacts_to_add:
-#         if contact not in list_obj.contacts:
-#             list_obj.contacts.append(contact)
-#     try:
-#         db.session.commit()
-#         return jsonify(success=True, message=f"Added {len(contacts_to_add)} contact(s) to the list.")
-#     except Exception:
-#         db.session.rollback()
-#         return jsonify(success=False, message="Could not add contacts."), 500
 
 
 @app.route('/lists/<int:list_id>/add_contacts', methods=['POST'])
@@ -332,66 +312,54 @@ def remove_contact_from_list(list_id, contact_id):
     return jsonify(success=False, message="Contact not in list."), 400
 
 
-
-@app.route('/contacts/upload', methods=['GET', 'POST'])
+@app.route('/upload_contacts', methods=['GET', 'POST'])
 def upload_contacts():
+    lists = ContactList.query.all()  # Get all lists for the dropdown
     rejected_rows = []
-    processed_count = 0
-
     if request.method == 'POST':
+        list_id = request.form.get('list_id')
+        target_list = ContactList.query.get(list_id)
+        if not target_list:
+            flash(('danger', 'Please select a valid list.'))
+            return render_template('upload_contacts.html', lists=lists)
         file = request.files.get('csv_file')
-        if not file or not file.filename.lower().endswith('.csv'):
-            flash("Please upload a CSV file.", "danger")
-            return render_template('upload_contacts.html', rejected_rows=[])
-
-        # Read the uploaded file as text
-        stream = io.StringIO(file.stream.read().decode("utf-8"))
-        reader = csv.reader(stream)
-        header = next(reader, None)
-        expected_header = ["First Name", "Last Name", "Email"]
-
-        # Check header
-        if [h.strip() for h in header] != expected_header:
-            flash("CSV must have columns: First Name, Last Name, Email", "danger")
-            return render_template('upload_contacts.html', rejected_rows=[])
-
-        # Fetch all existing emails for quick lookup
-        from models import Contact  # adjust import as needed
-        existing_emails = {c.email.lower() for c in Contact.query.all()}
-
-        for idx, row in enumerate(reader, start=2):  # start=2: header is row 1
-            # Verify column count and row content
-            if len(row) != 3 or any(cell.strip() == '' for cell in row):
-                rejected_rows.append({'rownum': idx, 'reason': 'Invalid columns or missing field', 'data': row})
+        if not file:
+            flash(('danger', 'Please upload a valid CSV file.'))
+            return render_template('upload_contacts.html', lists=lists)
+        f = TextIOWrapper(file, encoding="utf-8")
+        reader = csv.reader(f)
+        for idx, row in enumerate(reader, start=1):
+            # Adjust column indices as per your CSV format:
+            try:
+                first_name = row[0].strip()
+                last_name = row[1].strip()
+                email = row[2].strip().lower()
+            except Exception:
+                rejected_rows.append({
+                    "rownum": idx,
+                    "data": row,
+                    "reason": "Invalid row format"
+                })
                 continue
-
-            first_name, last_name, email = row
-            email = email.strip()
-            if email.lower() in existing_emails:
-                rejected_rows.append({'rownum': idx, 'reason': 'Duplicate email', 'data': row})
+            if not email:
+                rejected_rows.append({
+                    "rownum": idx,
+                    "data": row,
+                    "reason": "Missing email"
+                })
                 continue
-
-            if not first_name.strip() or not last_name.strip() or not email:
-                rejected_rows.append({'rownum': idx, 'reason': 'One or more fields empty', 'data': row})
-                continue
-
-            # Create & add contact
-            new_contact = Contact(
-                first_name=first_name.strip(),
-                last_name=last_name.strip(),
-                email=email
-            )
-            db.session.add(new_contact)
-            existing_emails.add(email.lower())
-            processed_count += 1
-
+            contact = Contact.query.filter_by(email=email).first()
+            if not contact:
+                contact = Contact(first_name=first_name, last_name=last_name, email=email)
+                db.session.add(contact)
+                db.session.commit()
+            # Check if contact is already in the list using the relationship:
+            if contact not in target_list.contacts:
+                target_list.contacts.append(contact)
         db.session.commit()
-        flash(f"Imported {processed_count} contacts.", "success")
-
-    else:
-        rejected_rows = []
-
-    return render_template('upload_contacts.html', rejected_rows=rejected_rows)
+        flash(('success', 'Contacts uploaded and added to the list!'))
+        return render_template('upload_contacts.html', lists=lists, rejected_rows=rejected_rows)
+    return render_template('upload_contacts.html', lists=lists)
 
 
 
