@@ -27,7 +27,6 @@ def index():
     contacts = Contact.query.all()
     return render_template('home.html', contacts=contacts)
 
-
 @app.route('/contacts')
 def contacts():
     page = request.args.get('page', 1, type=int)
@@ -48,13 +47,15 @@ def contacts():
 
     contacts_pagination = query.order_by(Contact.last_name, Contact.first_name).paginate(page=page, per_page=per_page)
     return render_template(
-        'contact_list.html',
+        'list_contacts.html',
         contacts=contacts_pagination.items,
         pagination=contacts_pagination
     )
 
 
-@app.route('/add', methods=['GET', 'POST'])
+#
+
+@app.route('/add_contact', methods=['GET', 'POST'])
 def add_contact():
     form = ContactForm()
     if form.validate_on_submit():
@@ -62,16 +63,21 @@ def add_contact():
             first_name=form.first_name.data,
             last_name=form.last_name.data,
             email=form.email.data,
+            phone_number=form.phone_number.data,
+            job_title=form.job_title.data,
+            organization=form.organization.data,
+            notes=form.notes.data
         )
         db.session.add(new_contact)
         try:
             db.session.commit()
             flash('Contact added successfully!', 'success')
-        except Exception:
+            return redirect(url_for('contacts'))
+        except Exception as e:
             db.session.rollback()
-            flash('Error: Could not add contact (maybe duplicate email).', 'danger')
-        return redirect(url_for('list_contacts'))  # Redirect to the contact list page
+            flash(f'Error adding contact: {e}', 'danger')
     return render_template('add_contact.html', form=form)
+
 
 @app.route('/edit/<int:contact_id>', methods=['GET', 'POST'])
 def edit_contact(contact_id):
@@ -311,6 +317,24 @@ def remove_contact_from_list(list_id, contact_id):
             return jsonify(success=False, message="Could not remove contact."), 500
     return jsonify(success=False, message="Contact not in list."), 400
 
+@app.route("/lists/<int:list_id>/contacts")
+def get_contacts_for_list(list_id):
+    contact_list = ContactList.query.get_or_404(list_id)
+    contacts = [
+        {
+            "id": c.id,
+            "first_name": c.first_name,
+            "last_name": c.last_name,
+            "email": c.email,
+            "phone_number": c.phone_number,
+            "job_title": c.job_title,
+            "organization": c.organization,
+            # "notes": c.notes,    # EXCLUDED!
+        }
+        for c in contact_list.contacts
+    ]
+    return jsonify(contacts)
+
 
 @app.route('/upload_contacts', methods=['GET', 'POST'])
 def upload_contacts():
@@ -329,11 +353,14 @@ def upload_contacts():
         f = TextIOWrapper(file, encoding="utf-8")
         reader = csv.reader(f)
         for idx, row in enumerate(reader, start=1):
-            # Adjust column indices as per your CSV format:
             try:
                 first_name = row[0].strip()
                 last_name = row[1].strip()
                 email = row[2].strip().lower()
+                phone_number = row[3].strip()
+                job_title = row[4].strip()
+                organization = row[5].strip()
+                notes = row[6].strip()
             except Exception:
                 rejected_rows.append({
                     "rownum": idx,
@@ -341,19 +368,26 @@ def upload_contacts():
                     "reason": "Invalid row format"
                 })
                 continue
-            if not email:
-                rejected_rows.append({
-                    "rownum": idx,
-                    "data": row,
-                    "reason": "Missing email"
-                })
-                continue
-            contact = Contact.query.filter_by(email=email).first()
+
+            # Try to find by email only if email is present;
+            # otherwise, always create a new contact (can't deduplicate)
+            contact = None
+            if email:
+                contact = Contact.query.filter_by(email=email).first()
+
             if not contact:
-                contact = Contact(first_name=first_name, last_name=last_name, email=email)
+                contact = Contact(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email if email else None,
+                    phone_number=phone_number,
+                    job_title=job_title,
+                    organization=organization,
+                    notes=notes
+                )
                 db.session.add(contact)
                 db.session.commit()
-            # Check if contact is already in the list using the relationship:
+
             if contact not in target_list.contacts:
                 target_list.contacts.append(contact)
         db.session.commit()
@@ -362,8 +396,7 @@ def upload_contacts():
     return render_template('upload_contacts.html', lists=lists)
 
 
-
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True, reloaders=False)

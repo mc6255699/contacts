@@ -1,0 +1,68 @@
+# manage.py
+from flask import Flask
+from flask.cli import FlaskGroup
+from models import db, Contact, ContactList
+
+def create_app():
+    app = Flask(__name__)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///contacts.db'  # Change if needed
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    db.init_app(app)
+    return app
+
+app = create_app()
+cli = FlaskGroup(app)
+
+@cli.command("shell")
+def shell_command():
+    """Start an interactive shell with app context."""
+    import code
+    with app.app_context():
+        context = {
+            'app': app,
+            'db': db,
+            'Contact': Contact,
+            'ContactList': ContactList,
+        }
+        print("Interactive shell with: app, db, Contact, ContactList")
+        code.interact(local=context)
+
+@cli.command("create-db")
+def create_db():
+    """Create database tables."""
+    with app.app_context():
+        db.create_all()
+        print("Database created.")
+
+@cli.command("drop-db")
+def drop_db():
+    """Drop all database tables."""
+    with app.app_context():
+        db.drop_all()
+        print("Database dropped.")
+
+@cli.command("seed-db")
+def seed_db():
+    """Add some example data to the database."""
+    with app.app_context():
+        contact = Contact(first_name="Alice", last_name="Smith", email="alice@example.com")
+        clist = ContactList(name="Friends", description="Close friends", owner="admin")
+        clist.contacts.append(contact)
+
+        db.session.add_all([contact, clist])
+        db.session.commit()
+        print("Sample data added.")
+
+@app.cli.command("truncate_contacts")
+def truncate_contacts():
+    """Truncate all data from the contacts table."""
+    db.session.query(Contact).delete()
+    db.session.commit()
+    click.echo("All contacts have been deleted from the contacts table.")
+
+
+
+
+if __name__ == '__main__':
+    cli()

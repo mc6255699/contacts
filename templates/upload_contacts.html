@@ -4,11 +4,23 @@
 
 {% block content %}
 <div class="container">
-    <h2 class="mb-4">Upload Contacts CSV</h2>
+    <h2 class="mb-4">Import Contacts</h2>
 
+
+<h3>How to import contacts from a file</h3>
+<ol>
+    <li> <a href="{{ url_for('static', filename='Contact_upload_template.csv') }}" download>
+            Download CSV Template
+        </a></li>
+    <li>Open the template in excel, populate the rows without adding any columns!</li>
+    <li>Make sure to save the file as a "Comma Separated Values" file *.csv</li>
+    <li>OPTIONAL - choose a list to add new contacts to</li>
+    <li>Upload the CSV file</li>
+</ol>
 
 <form method="POST" enctype="multipart/form-data" class="mb-4">
-    <div class="mb-3">
+<div class="row mb-3">
+    <div class="col-md-5 me-2">
         <label for="list_id" class="form-label">Select a List:</label>
         <select name="list_id" id="list_id" class="form-select" required>
             <option value="" disabled selected>-- Choose a List --</option>
@@ -17,15 +29,16 @@
             {% endfor %}
         </select>
     </div>
-    <div class="mb-3">
-        <input type="file" name="csv_file" accept=".csv" class="form-control" required>
+    <div class="col-md-5">
+        <label for="csv_file" class="form-label">Upload CSV:</label>
+        <input type="file" name="csv_file" id="csv_file" accept=".csv" class="form-control" required>
     </div>
-    <button type="submit" class="btn btn-primary">Upload and Import</button>
+</div>
+
+
+    <button type="submit" class="btn btn-primary">Import Data</button>
 </form>
-
-
-
-
+</div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}

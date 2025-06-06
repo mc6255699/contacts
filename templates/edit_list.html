@@ -50,15 +50,17 @@
                 <tbody id="search-results-body"></tbody>
             </table>
             <div id="add-contacts-message"></div>
+
+            <hr class="my-4">
+
+            <h5 class="mb-3">Current Members</h5>
+            <div id="current-members-container"></div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div id="members-pagination"></div>
+            </div>
+            <div id="remove-contact-message"></div>
         </div>
     </div>
-
-    <h5>Current Members</h5>
-    <div id="current-members-container"></div>
-    <div class="d-flex justify-content-between align-items-center">
-        <div id="members-pagination"></div>
-    </div>
-    <div id="remove-contact-message"></div>
 
     <div class="d-flex justify-content-end mt-4">
         <form method="POST">
@@ -130,135 +132,130 @@ function renderMembers(page = 1) {
             .then(res => {
                 const msgDiv = document.getElementById('remove-contact-message');
                 if (res.success) {
-                    // Remove from membersData array
                     const idx = membersData.findIndex(m => m.id == contactId);
                     if (idx > -1) membersData.splice(idx, 1);
-                    // If last page is now empty, go back a page
-                    const totalPages = Math.ceil(membersData.length / MEMBERS_PER_PAGE);
-                    if (currentPage > totalPages) currentPage = totalPages > 0 ? totalPages : 1;
                     renderMembers(currentPage);
-                    msgDiv.textContent = res.message;
-                    msgDiv.className = "text-success";
+                    msgDiv.textContent = "Removed!";
+                    msgDiv.className = "text-success mb-2";
                 } else {
-                    msgDiv.textContent = res.message || "Failed to remove contact.";
-                    msgDiv.className = "text-danger";
+                    msgDiv.textContent = res.message || "Could not remove contact.";
+                    msgDiv.className = "text-danger mb-2";
                 }
             });
         });
     });
+
     renderPagination();
 }
 
 function renderPagination() {
     const totalPages = Math.ceil(membersData.length / MEMBERS_PER_PAGE);
-    if (totalPages < 2) {
-        document.getElementById('members-pagination').innerHTML = "";
-        return;
+    let html = "";
+    if (totalPages > 1) {
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<button class="btn btn-outline-secondary btn-sm ms-1${i === currentPage ? ' active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        }
     }
-    let html = '<nav><ul class="pagination pagination-sm mb-0">';
-    for (let i = 1; i <= totalPages; i++) {
-        html += `<li class="page-item${i === currentPage ? ' active' : ''}">
-                    <button type="button" class="page-link" data-page="${i}">${i}</button>
-                </li>`;
-    }
-    html += '</ul></nav>';
     document.getElementById('members-pagination').innerHTML = html;
+}
 
-    document.querySelectorAll('#members-pagination .page-link').forEach(btn => {
-        btn.onclick = function() {
-            currentPage = parseInt(this.getAttribute('data-page'));
-            renderMembers(currentPage);
-        };
-    });
+function goToPage(page) {
+    currentPage = page;
+    renderMembers(page);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    renderMembers(currentPage);
+    renderMembers();
+});
 
-    // --- Add Contacts JS (existing logic, using the trash icon for Remove) ---
-    const MIN_QUERY_LEN = 3;
-    const searchBox = document.getElementById('contact-search');
-    const resultsTable = document.getElementById('search-results-table');
-    const resultsBody = document.getElementById('search-results-body');
-    const messageDiv = document.getElementById('add-contacts-message');
 
-    function getCurrentMemberIds() {
-        return membersData.map(c => c.id);
+// === Add Contacts AJAX with JSON ===
+
+let searchedContacts = [];
+
+document.getElementById('contact-search').addEventListener('input', function() {
+    const query = this.value.trim();
+    const table = document.getElementById('search-results-table');
+    const body = document.getElementById('search-results-body');
+    if (query.length < 3) {
+        table.style.display = "none";
+        body.innerHTML = "";
+        return;
     }
-
-    searchBox.addEventListener('input', function() {
-        const q = searchBox.value.trim();
-        if (q.length < MIN_QUERY_LEN) {
-            resultsTable.style.display = 'none';
-            return;
-        }
-        const exclude_ids = getCurrentMemberIds();
-        const params = new URLSearchParams({
-            q: q,
-            exclude_ids: exclude_ids.join(',')
-        });
-        fetch(`/search_contacts?${params.toString()}`)
-            .then(resp => resp.json())
-            .then(data => {
-                resultsBody.innerHTML = '';
-                if (data.length === 0) {
-                    resultsTable.style.display = 'none';
-                    return;
-                }
-                data.forEach(contact => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>
-                            <button type="button" class="btn btn-success btn-sm add-contact-btn" title="Add" data-contact-id="${contact.id}">+</button>
-                        </td>
-                        <td>${contact.first_name} ${contact.last_name}</td>
-                        <td>${contact.email}</td>
-                    `;
-                    resultsBody.appendChild(tr);
-                });
-                resultsTable.style.display = '';
-
-                document.querySelectorAll('.add-contact-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const contactId = this.getAttribute('data-contact-id');
-                        fetch('{{ url_for("add_contacts_to_list", list_id=list_obj.id) }}', {
-                            method: "POST",
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({contact_ids: [contactId]})
-                        })
-                        .then(resp => resp.json())
-                        .then(res => {
-                            if (res.success) {
-                                messageDiv.textContent = res.message || "Contact added.";
-                                messageDiv.className = "text-success";
-                                // Remove the just-added row from search results
-                                this.closest('tr').remove();
-                                let c = res.new_contact;
-                                if (c) {
-                                    // Add new contact to membersData and re-sort, re-render
-                                    membersData.push({
-                                        id: c.id,
-                                        first_name: c.first_name,
-                                        last_name: c.last_name,
-                                        email: c.email
-                                    });
-                                    // Sort by last name, then first name
-                                    membersData.sort(function(a, b) {
-                                        let ln = a.last_name.localeCompare(b.last_name);
-                                        if (ln !== 0) return ln;
-                                        return a.first_name.localeCompare(b.first_name);
-                                    });
-                                    renderMembers(currentPage);
-                                }
-                            } else {
-                                messageDiv.textContent = res.message || "Failed to add contact.";
-                                messageDiv.className = "text-danger";
-                            }
-                        });
-                    });
+    fetch(`/search_contacts?q=${encodeURIComponent(query)}`)
+        .then(resp => resp.json())
+        .then(data => {
+            // Filter out already-in-list contacts
+            const currentIds = new Set(membersData.map(m => m.id));
+            searchedContacts = data.filter(c => !currentIds.has(c.id));
+            if (searchedContacts.length === 0) {
+                table.style.display = "none";
+                body.innerHTML = "";
+                return;
+            }
+            let html = "";
+            for (const c of searchedContacts) {
+                html += `
+                  <tr>
+                    <td>
+                      <button class="btn btn-primary btn-sm add-contact-btn" data-contact-id="${c.id}">Add</button>
+                    </td>
+                    <td>${c.first_name} ${c.last_name}</td>
+                    <td>${c.email}</td>
+                  </tr>
+                `;
+            }
+            body.innerHTML = html;
+            table.style.display = "";
+            document.querySelectorAll('.add-contact-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const contactId = parseInt(this.getAttribute('data-contact-id'));
+                    addContactToList(contactId);
                 });
             });
-    });
+        });
 });
+
+function addContactToList(contactId) {
+    const messageDiv = document.getElementById('add-contacts-message');
+    messageDiv.className = "";
+    messageDiv.textContent = "Adding contact...";
+    fetch(
+        "{{ url_for('add_contacts_to_list', list_id=list_obj.id) }}",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({contact_ids: [contactId]})
+        }
+    )
+    .then(resp => resp.json())
+    .then(res => {
+        if (res.success && res.new_contact) {
+            // Add to memberData and update UI
+            membersData.push(res.new_contact);
+            membersData.sort((a, b) => {
+                if (a.last_name === b.last_name) {
+                    return a.first_name.localeCompare(b.first_name);
+                }
+                return a.last_name.localeCompare(b.last_name);
+            });
+            renderMembers(currentPage);
+            messageDiv.textContent = res.message || "Contact added!";
+            messageDiv.className = "text-success mb-2";
+            // Remove from search results
+            searchedContacts = searchedContacts.filter(c => c.id !== contactId);
+            document.getElementById('contact-search').dispatchEvent(new Event('input'));
+        } else {
+            messageDiv.textContent = res.message || "Failed to add contact.";
+            messageDiv.className = "text-danger mb-2";
+        }
+    })
+    .catch(() => {
+        messageDiv.textContent = "Could not add contact, server error.";
+        messageDiv.className = "text-danger mb-2";
+    });
+}
 </script>
 {% endblock %}

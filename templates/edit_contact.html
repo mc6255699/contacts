@@ -3,86 +3,160 @@
 {% block title %}Edit Contact{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2>Edit Contact</h2>
+<style>
+    .form-label-inline {
+        display: flex;
+        align-items: center;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    .form-label-inline label {
+        min-width: 120px;
+        margin-right: 10px;
+        margin-bottom: 0;
+    }
+    .form-label-inline .form-control,
+    .form-label-inline .form-control-sm,
+    .form-label-inline textarea {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+</style>
+<div class="container mt-4">
+
+<h2>
+  <img src="{{ url_for('static', filename='contact.png') }}" width="35" height="25" style="horiz-align: bottom; margin-right: 8px;">
+  {{ contact.first_name }} {{ contact.last_name }}
+
+</h2>
+
+<hr>
+    <br>
+
     <form method="POST" class="mb-3">
         {{ form.hidden_tag() }}
         <div class="row mb-3">
-            <div class="col-md-6">
-                {{ form.first_name.label(class="form-label") }}
-                {{ form.first_name(class="form-control form-control-sm") }}
+            <div class="col-md-6 mb-3">
+                <div class="form-label-inline">
+                  {{ form.first_name.label(class="form-label mb-0") }}
+                  {{ form.first_name(class="form-control form-control-sm", placeholder="Enter first name") }}
+                </div>
                 {% for error in form.first_name.errors %}
                     <div class="text-danger">{{ error }}</div>
                 {% endfor %}
             </div>
-            <div class="col-md-6">
-                {{ form.last_name.label(class="form-label") }}
-                {{ form.last_name(class="form-control form-control-sm") }}
+            <div class="col-md-6 mb-3">
+                <div class="form-label-inline">
+                  {{ form.last_name.label(class="form-label mb-0") }}
+                  {{ form.last_name(class="form-control form-control-sm", placeholder="Enter last name") }}
+                </div>
                 {% for error in form.last_name.errors %}
                     <div class="text-danger">{{ error }}</div>
                 {% endfor %}
             </div>
         </div>
+        <div class="row mb-3">
+            <div class="col-md-6 mb-3">
+                <div class="form-label-inline">
+                  {{ form.email.label(class="form-label mb-0") }}
+                  {{ form.email(class="form-control form-control-sm", placeholder="Enter email") }}
+                </div>
+                {% for error in form.email.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="form-label-inline">
+                  {{ form.phone_number.label(class="form-label mb-0") }}
+                  {{ form.phone_number(class="form-control form-control-sm", placeholder="Enter phone number") }}
+                </div>
+                {% for error in form.phone_number.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6 mb-3">
+                <div class="form-label-inline">
+                  {{ form.job_title.label(class="form-label mb-0") }}
+                  {{ form.job_title(class="form-control form-control-sm", placeholder="Enter job title") }}
+                </div>
+                {% for error in form.job_title.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="form-label-inline">
+                  {{ form.organization.label(class="form-label mb-0") }}
+                  {{ form.organization(class="form-control form-control-sm", placeholder="Enter organization") }}
+                </div>
+                {% for error in form.organization.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
         <div class="mb-3">
-            {{ form.email.label(class="form-label") }}
-            {{ form.email(class="form-control form-control-sm") }}
-            {% for error in form.email.errors %}
+            <div class="form-label-inline">
+              {{ form.notes.label(class="form-label mb-0") }}
+              {{ form.notes(class="form-control form-control-sm", placeholder="Add any notes") }}
+            </div>
+            {% for error in form.notes.errors %}
                 <div class="text-danger">{{ error }}</div>
             {% endfor %}
+        </div>
+
+        <div class="card mb-4 shadow-sm" style="background: #f7f7f9; border: 1px solid #ddd;">
+            <div class="card-body">
+                <h4 class="card-title mb-3">Add to Lists</h4>
+                <div class="mb-3">
+                    <input type="text" id="list-search" class="form-control form-control-sm" placeholder="Search lists (min 3 chars)">
+                </div>
+                <table class="table table-sm" id="list-search-results-table" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Name</th>
+                            <th>Owner</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-search-results-body"></tbody>
+                </table>
+                <div id="add-lists-message"></div>
+                <hr>
+                <h5 class="mt-4">Lists Memberships</h5>
+                <table class="table table-sm" id="current-lists-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Owner</th>
+                            <th>Remove</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for l in contact.contact_lists %}
+                        <tr class="current-list-row" data-list-id="{{ l.id }}">
+                            <td>
+                                <a href="{{ url_for('edit_list', list_id=l.id) }}">
+                                    {{ l.name }}
+                                </a>
+                            </td>
+                            <td>{{ l.owner }}</td>
+                            <td>
+                                <button type="button" class="btn btn-link text-danger btn-sm remove-list-btn" data-list-id="{{ l.id }}" title="Remove" style="padding:0;">
+                                    <img src="{{ url_for('static', filename='trash.png') }}" alt="Remove" width="20" height="20" class="action-btn-img">
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <div id="remove-list-message"></div>
+            </div>
         </div>
         <div class="d-flex justify-content-end mt-4">
             {{ form.submit(class="btn btn-success btn-sm") }}
         </div>
     </form>
-
-    <hr>
-
-    <h5>Lists This Contact Belongs To</h5>
-    <table class="table table-sm" id="current-lists-table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Owner</th>
-                <th>Remove</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for l in contact.contact_lists %}
-            <tr class="current-list-row" data-list-id="{{ l.id }}">
-                <td>
-                    <a href="{{ url_for('edit_list', list_id=l.id) }}">
-                        {{ l.name }}
-                    </a>
-                </td>
-                <td>{{ l.owner }}</td>
-                <td>
-                    <button type="button" class="btn btn-link text-danger btn-sm remove-list-btn" data-list-id="{{ l.id }}" title="Remove" style="padding:0;">
-                        <img src="{{ url_for('static', filename='trash.png') }}" alt="Remove" width="20" height="20" class="action-btn-img">
-                    </button>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    <div id="remove-list-message"></div>
-
-    <hr>
-
-    <h4>Add to Lists</h4>
-    <div class="mb-3">
-        <input type="text" id="list-search" class="form-control form-control-sm" placeholder="Search lists (min 3 chars)">
-    </div>
-    <table class="table table-sm" id="list-search-results-table" style="display:none;">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Name</th>
-                <th>Owner</th>
-            </tr>
-        </thead>
-        <tbody id="list-search-results-body"></tbody>
-    </table>
-    <div id="add-lists-message"></div>
 </div>
 
 <script>

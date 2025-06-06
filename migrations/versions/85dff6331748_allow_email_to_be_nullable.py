@@ -1,8 +1,8 @@
-"""initial
+"""allow email to be nullable
 
-Revision ID: cb388612907f
+Revision ID: 85dff6331748
 Revises: 
-Create Date: 2025-06-01 19:26:03.095739
+Create Date: 2025-06-05 16:05:31.467290
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'cb388612907f'
+revision = '85dff6331748'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -22,7 +22,11 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('first_name', sa.String(length=50), nullable=False),
     sa.Column('last_name', sa.String(length=50), nullable=False),
-    sa.Column('email', sa.String(length=120), nullable=False),
+    sa.Column('email', sa.String(length=120), nullable=True),
+    sa.Column('phone_number', sa.String(length=20), nullable=True),
+    sa.Column('job_title', sa.String(length=50), nullable=True),
+    sa.Column('organization', sa.String(length=50), nullable=True),
+    sa.Column('notes', sa.Text(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )

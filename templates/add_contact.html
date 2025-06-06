@@ -3,33 +3,71 @@
 {% block title %}Add Contact{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2>Add New Contact</h2>
-    <form method="POST">
+<div class="container mt-4">
+    <h2 class="mb-4">Add Contact</h2>
+    <form method="POST" class="mb-3">
         {{ form.hidden_tag() }}
+        <div class="row mb-3">
+            <div class="col-md-6 mb-3">
+                {{ form.first_name.label(class="form-label") }}
+                {{ form.first_name(class="form-control form-control-sm", placeholder="Enter first name") }}
+                {% for error in form.first_name.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.last_name.label(class="form-label") }}
+                {{ form.last_name(class="form-control form-control-sm", placeholder="Enter last name") }}
+                {% for error in form.last_name.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+<div class="row mb-3">
+    <div class="col-md-6 mb-3">
+        {{ form.email.label(class="form-label") }}
+        {{ form.email(class="form-control form-control-sm", placeholder="Enter email") }}
+        {% for error in form.email.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="col-md-6 mb-3">
+        {{ form.phone_number.label(class="form-label") }}
+        {{ form.phone_number(class="form-control form-control-sm", placeholder="Enter phone number") }}
+        {% for error in form.phone_number.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
+</div>
+
+
+        <div class="row mb-3">
+            <div class="col-md-6 mb-3">
+                {{ form.job_title.label(class="form-label") }}
+                {{ form.job_title(class="form-control form-control-sm", placeholder="Enter job title") }}
+                {% for error in form.job_title.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.organization.label(class="form-label") }}
+                {{ form.organization(class="form-control form-control-sm", placeholder="Enter organization") }}
+                {% for error in form.organization.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
         <div class="mb-3">
-            {{ form.first_name.label(class="form-label") }}
-            {{ form.first_name(class="form-control") }}
-            {% for error in form.first_name.errors %}
+            {{ form.notes.label(class="form-label") }}
+            {{ form.notes(class="form-control form-control-sm", placeholder="Add any notes") }}
+            {% for error in form.notes.errors %}
                 <div class="text-danger">{{ error }}</div>
             {% endfor %}
         </div>
-        <div class="mb-3">
-            {{ form.last_name.label(class="form-label") }}
-            {{ form.last_name(class="form-control") }}
-            {% for error in form.last_name.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
-        </div>
-        <div class="mb-3">
-            {{ form.email.label(class="form-label") }}
-            {{ form.email(class="form-control") }}
-            {% for error in form.email.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
-        </div>
-        {{ form.submit(class="btn btn-primary") }}
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+
+        <button type="submit" class="btn btn-primary">Add Contact</button>
     </form>
 </div>
 {% endblock %}

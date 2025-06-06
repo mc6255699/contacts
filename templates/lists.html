@@ -18,9 +18,8 @@
     .action-btn-img:focus {
         box-shadow: 0 0 3px #888;
     }
-    /* Scrolling table container for contacts */
     .scroll-table-container {
-        max-height: 320px; /* shows about 10 rows if row height is ~32px */
+        max-height: 320px;
         overflow-y: auto;
     }
 </style>
@@ -38,7 +37,7 @@
                     <small class="text-muted">({{ list.owner }})</small>
                 </div>
                 <div>
-                    <a href="javascript:void(0);" class="show-members-btn" data-bs-target="#collapse{{ list.id }}" title="Show Members" style="margin-right: 8px;">
+                    <a href="javascript:void(0);" class="show-members-btn" data-list-id="{{ list.id }}" data-bs-target="#collapse{{ list.id }}" title="Show Members" style="margin-right: 8px;">
                         <img src="{{ url_for('static', filename='search.png') }}" alt="Show Members" width="20" height="20" class="action-btn-img">
                     </a>
                     <a href="{{ url_for('edit_list', list_id=list.id) }}" title="Edit" style="margin-right: 8px;">
@@ -55,30 +54,9 @@
                 <div class="card-body">
                     <p><strong>Description:</strong> {{ list.description }}</p>
                     <p><strong>Owner:</strong> {{ list.owner }}</p>
-                    {% if list.contacts %}
-                    <div class="scroll-table-container">
-                        <table class="table table-sm mb-0">
-                            <thead>
-                                <tr>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Email</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for contact in list.contacts %}
-                                <tr>
-                                    <td>{{ contact.first_name }}</td>
-                                    <td>{{ contact.last_name }}</td>
-                                    <td>{{ contact.email }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div id="contacts-container-{{ list.id }}">
+                        <div class="text-muted">Click "Show Members" to load contacts.</div>
                     </div>
-                    {% else %}
-                    <em>No members in this list.</em>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -90,16 +68,71 @@
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.show-members-btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
+            var listId = this.getAttribute('data-list-id');
             var target = this.getAttribute('data-bs-target');
             var collapseEl = document.querySelector(target);
+            var contactsContainer = document.getElementById('contacts-container-' + listId);
 
+            // If first expand, fetch contacts
+            if (!contactsContainer.getAttribute('data-loaded')) {
+                contactsContainer.innerHTML = '<div class="text-muted">Loading contacts...</div>';
+                fetch('/lists/' + listId + '/contacts')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length === 0) {
+                            contactsContainer.innerHTML = '<div class="text-muted">No members in this list.</div>';
+                        } else {
+                            let rows = '';
+                            data.forEach(contact => {
+                                rows += `
+                                    <tr>
+                                        <td>${contact.first_name || ''}</td>
+                                        <td>${contact.last_name || ''}</td>
+                                        <td>${contact.email || ''}</td>
+                                        <td>${contact.phone_number || ''}</td>
+                                        <td>${contact.job_title || ''}</td>
+                                        <td>${contact.organization || ''}</td>
+                                        <td class="text-end">
+                                            <a href="/edit/${contact.id}" title="Edit Contact">
+                                                <img src="{{ url_for('static', filename='edit.png') }}" alt="Edit" width="18" height="18" class="action-btn-img">
+                                            </a>
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                            contactsContainer.innerHTML = `
+                                <div class="scroll-table-container">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>First Name</th>
+                                                <th>Last Name</th>
+                                                <th>Email</th>
+                                                <th>Phone</th>
+                                                <th>Job Title</th>
+                                                <th>Organization</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${rows}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                        }
+                        contactsContainer.setAttribute('data-loaded', '1');
+                    })
+                    .catch(error => {
+                        contactsContainer.innerHTML = '<div class="text-danger">Failed to load contacts.</div>';
+                    });
+            }
+
+            // Bootstrap accordion toggle
+            var collapse = new bootstrap.Collapse(collapseEl, {toggle: false});
             if (collapseEl.classList.contains('show')) {
-                // If it's open, hide it
-                var collapse = new bootstrap.Collapse(collapseEl, {toggle: false});
                 collapse.hide();
             } else {
-                // If it's closed, show it (Bootstrap will auto-close others due to parent)
-                var collapse = new bootstrap.Collapse(collapseEl, {toggle: false});
                 collapse.show();
             }
         });
