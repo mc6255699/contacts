@@ -4,15 +4,20 @@
 
 {% block content %}
 <div class="container">
-    <h2 class="mb-4">Import Contacts</h2>
+    <h2 class="mb-4">Import Contacts from template</h2>
+
+
 
 <div class="card bg-light mb-4">
   <div class="card-body">
     <h5 class="card-title">How to import contacts...</h5>
     <ol class="mb-0">
-      <li>Download the sample CSV file and fill in your contact details.</li>
-      <li>Select the list you want to add contacts to.</li>
-      <li>Choose your CSV file and click upload.</li>
+ <li> <a href="{{ url_for('static', filename='Contact_upload_template.csv') }}" download>
+            Download CSV Template
+        </a></li>
+    <li>Open the template in excel, populate the rows without adding any columns!</li>
+    <li>Save the file as a "Comma Separated Values" file *.csv</li>
+    <li>Select a list (optional) and Upload the CSV file</li>
     </ol>
   </div>
 </div>
