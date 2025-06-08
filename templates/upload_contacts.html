@@ -28,7 +28,7 @@
     <div class="col-md-5 me-2">
         <label for="list_id" class="form-label">Select a List:</label>
         <select name="list_id" id="list_id" class="form-select" required>
-            <option value="" disabled selected>-- Choose a List --</option>
+            <option value="" disabled selected>  Choose a List </option>
             {% for lst in lists %}
                 <option value="{{ lst.id }}">{{ lst.name }}</option>
             {% endfor %}
@@ -45,15 +45,15 @@
 </form>
 </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul class="list-unstyled">
-        {% for category, message in messages %}
-          <li class="alert alert-{{ category }}">{{ message }}</li>
-        {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+{#    {% with messages = get_flashed_messages(with_categories=true) %}#}
+{#      {% if messages %}#}
+{#        <ul class="list-unstyled">#}
+{#        {% for category, message in messages %}#}
+{#          <li class="alert alert-{{ category }}">{{ message }}</li>#}
+{#        {% endfor %}#}
+{#        </ul>#}
+{#      {% endif %}#}
+{#    {% endwith %}#}
 
     {% if rejected_rows %}
         <h4>Rejected Rows</h4>
