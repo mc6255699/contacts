@@ -3,38 +3,87 @@
 {% block title %}All Contacts{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 60vh;">
-    <h1 class="mb-4" style="text-align: center;">Simple Contact Manager</h1>
-    <a href="{{ url_for('add_contact') }}" class="btn btn-primary mb-3" style="min-width: 180px;">
-        Create New Contact
-    </a>
-    <input
-        type="text"
-        id="contactSearch"
-        class="form-control mb-3"
-        placeholder="Search contacts by name or email..."
-        style="max-width: 400px; text-align: center;"
-    >
-    <div id="results" class="w-100" style="max-width: 600px;"></div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container mt-3">
+    <div class="row justify-content-center">
+        <div class="col-auto">
+            <h1 class="mb-2 text-center" style="margin-top: 24px;">Simple Contact Manager</h1>
+        </div>
+    </div>
+    <div class="row justify-content-center mb-4">
+        <div class="col-auto d-flex gap-3">
+            <a href="{{ url_for('add_contact') }}" class="btn btn-primary d-flex align-items-center">
+                <i class="fa-regular fa-address-card me-2"></i>
+                <span>New Contact</span>
+            </a>
+            <a href="{{ url_for('add_list') }}" class="btn btn-success d-flex align-items-center">
+                <i class="fa-solid fa-users-line me-2"></i>
+                <span>New List</span>
+            </a>
+        </div>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-12 d-flex flex-column align-items-center">
+            <input
+                type="text"
+                id="contactSearch"
+                class="form-control mb-3"
+                placeholder="Search contacts or lists by name or email..."
+                style="max-width: 400px; text-align: center;"
+            >
+            <div id="results" class="w-100" style="max-width: 600px;">
+                {% if contacts %}
+                    <div class="row g-3">
+                    {% for c in contacts %}
+                        <div class="col-12 col-md-6">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title mb-1">
+                                        <a href="{{ url_for('edit_contact', contact_id=c.id) }}" class="text-decoration-none">
+                                            {{ c.first_name }} {{ c.last_name }}
+                                        </a>
+                                    </h5>
+                                    <p class="card-text mb-0 text-muted" style="font-size: 0.97em;">
+                                        <strong>Email:</strong> {{ c.email }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">No contacts found.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
+const origHTML = document.getElementById('results').innerHTML;
 document.getElementById('contactSearch').addEventListener('keyup', function() {
     const query = this.value.trim();
     const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = '';
-
-    if (query.length < 3) return;
+    if (query.length < 3) {
+        resultsDiv.innerHTML = origHTML;
+        return;
+    }
 
     fetch(`/search_contacts?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
-            if (data.length === 0) {
-                resultsDiv.innerHTML = '<div class="text-center text-muted">No contacts found.</div>';
+            // Expect backend to return an object: {contacts: [...], lists: [...]}
+            const contacts = data.contacts || [];
+            const lists = data.lists || [];
+            if (contacts.length === 0 && lists.length === 0) {
+                resultsDiv.innerHTML = '<div class="text-center text-muted">No contacts or lists found.</div>';
                 return;
             }
             let html = `<div class="row g-3">`;
-            data.forEach(c => {
+
+            // Contact results
+            contacts.forEach(c => {
                 html += `
                 <div class="col-12 col-md-6">
                     <div class="card shadow-sm h-100">
@@ -51,6 +100,26 @@ document.getElementById('contactSearch').addEventListener('keyup', function() {
                     </div>
                 </div>`;
             });
+
+            // List results
+            lists.forEach(list => {
+                html += `
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm h-100 bg-light border-success">
+                        <div class="card-body">
+                            <h5 class="card-title mb-1">
+                                <a href="/edit_list/${list.id}" class="text-success text-decoration-none">
+                                    <i class="fa-solid fa-users-line me-1"></i>
+                                    <b>${list.name}</b>
+                                </a>
+                            </h5>
+                            ${list.description ? `<p class="card-text mb-1">${list.description}</p>` : ""}
+                            ${list.owner ? `<p class="card-text mb-0 text-muted" style="font-size: 0.97em;"><strong>Owner:</strong> ${list.owner}</p>` : ""}
+                        </div>
+                    </div>
+                </div>`;
+            });
+
             html += '</div>';
             resultsDiv.innerHTML = html;
         })
@@ -59,5 +128,4 @@ document.getElementById('contactSearch').addEventListener('keyup', function() {
         });
 });
 </script>
-
 {% endblock %}

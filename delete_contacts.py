@@ -1,4 +1,4 @@
-from app import app
+#from app import app
 from models import db, Contact
 
 with app.app_context():

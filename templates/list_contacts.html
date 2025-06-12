@@ -1,219 +1,142 @@
 {% extends "base.html" %}
 
-{% block title %}Contact List{% endblock %}
+{% block title %}All Contacts{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+
 <style>
-    .action-btn-img {
-        vertical-align: middle;
-        margin-right: 4px;
-        cursor: pointer;
-        transition: box-shadow 0.2s;
-    }
-    .action-btn-img:hover, .action-btn-img:focus {
-        box-shadow: 0 0 3px #888;
-    }
-    .accordion-row {
-        background: #f8f9fa;
-        border-top: 1px solid #e9ecef;
-    }
-    .accordion-content {
-        padding: 12px 32px;
-        font-size: 0.96em;
-    }
-    .accordion-content ul {
-        margin-bottom: 0;
-        padding-left: 20px;
-    }
-    .accordion-content li {
-        margin-bottom: 3px;
-    }
-    .actions-cell {
-        position: relative;
-        min-width: 90px;
-        white-space: nowrap;
-    }
-    #contact-search {
-        margin-bottom: 16px;
-        max-width: 350px;
-        display: inline-block;
-    }
+
+
+@media(max-width: 1200px) {
+    #contacts-table { min-width: 900px; }
+}
+@media(max-width: 992px) {
+    #contacts-table { min-width: 700px; }
+}
 </style>
 
-<h1 class="mb-3">All Contacts</h1>
-<div class="mb-3">
-    <input type="text" class="form-control form-control-sm" id="contact-search" placeholder="Search contacts (min 3 characters)">
+<div class="container mt-4">
+    <h1 class="mb-4 text-center">Simple Contact Manager</h1>
+    <div class="d-flex justify-content-center mb-3">
+        <a href="{{ url_for('add_contact') }}" class="btn btn-primary">Create New Contact</a>
+    </div>
+{#    <div class="row justify-content-center mb-3">#}
+{#        <div class="col-md-7">#}
+{#            <input#}
+{#                type="text"#}
+{#                id="contactSearch"#}
+{#                class="form-control"#}
+{#                placeholder="Search contacts by name or email..."#}
+{#            >#}
+{#        </div>#}
+{#    </div>#}
+    <div id="results" class="w-100" style="max-width: 1400px; margin: 0 auto;">
+        <table class="table table-striped align-middle" id="contacts-table">
+            <thead>
+                <tr>
+   <th style="width:32px;"></th>
+
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Job Title</th>
+                    <th style="width: 80px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for contact in contacts %}
+                <tr class="contact-row" data-contact-id="{{ contact.id }}">
+                    <td class="details-control" title="Show lists"><i class="fas fa-angle-down"></i></td>
+                    <td>{{ contact.first_name }} {{ contact.last_name }}</td>
+                    <td>{{ contact.email or '-' }}</td>
+                    <td>{{ contact.phone_number or '-' }}</td>
+                    <td>{{ contact.organization or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_contact', contact_id=contact.id) }}" class="btn btn-outline-secondary btn-sm" title="Edit Contact">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_contact', contact_id=contact.id) }}"
+                              style="display:inline;" onsubmit="return confirm('Are you sure?');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Contact">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-<div class="table-responsive">
-<table class="table table-sm table-striped align-middle mb-2" id="contacts-table">
-    <thead>
-        <tr>
-            <th>First</th>
-            <th>Last</th>
-            <th>Email</th>
-            <th style="width:90px;">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for contact in contacts %}
-        <tr data-contact-id="{{ contact.id }}">
-            <td>{{ contact.first_name }}</td>
-            <td>{{ contact.last_name }}</td>
-            <td>{{ contact.email }}</td>
-            <td class="actions-cell">
-                <button type="button"
-                    class="btn btn-link p-0 m-0 toggle-lists-btn"
-                    data-contact-id="{{ contact.id }}"
-                    title="Show Lists"
-                    style="margin-right:4px;">
-                    <img src="{{ url_for('static', filename='search.png') }}" alt="Lists" height="20" class="action-btn-img">
-                </button>
-                <a href="{{ url_for('edit_contact', contact_id=contact.id) }}" title="Edit">
-                    <img src="{{ url_for('static', filename='edit.png') }}" alt="Edit" height="20" class="action-btn-img">
-                </a>
-                <form action="{{ url_for('delete_contact', contact_id=contact.id) }}" method="post" style="display: inline;">
-                    <button type="submit" style="border: none; background: none; padding: 0;" title="Delete" onclick="return confirm('Delete this contact?');">
-                        <img src="{{ url_for('static', filename='trash.png') }}" alt="Delete" height="20" class="action-btn-img">
-                    </button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-</div>
 
-{% if pagination.pages > 1 %}
-<nav>
-  <ul class="pagination">
-    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('contacts', page=1, search=request.args.get('search')) }}">&laquo; First</a>
-    </li>
-    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('contacts', page=pagination.prev_num, search=request.args.get('search')) if pagination.has_prev else '#' }}">&lsaquo; Prev</a>
-    </li>
-    <li class="page-item active">
-      <span class="page-link">
-        Page {{ pagination.page }} of {{ pagination.pages }}
-      </span>
-    </li>
-    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('contacts', page=pagination.next_num, search=request.args.get('search')) if pagination.has_next else '#' }}">Next &rsaquo;</a>
-    </li>
-    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('contacts', page=pagination.pages, search=request.args.get('search')) }}">Last &raquo;</a>
-    </li>
-  </ul>
-</nav>
-{% endif %}
-
-    <a href="{{ url_for('add_contact') }}" class="btn btn-primary mb-3" style="min-width: 120px;">
-        add contact
-    </a>
-
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://kit.fontawesome.com/82f1e751fa.js" crossorigin="anonymous"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let openAccordionRow = null;
-
-    function closeAccordionRow() {
-        if (openAccordionRow) {
-            openAccordionRow.remove();
-            openAccordionRow = null;
-        }
+function formatLists(lists) {
+    if (!lists.length) {
+        return '<div class="p-3 text-muted">This contact is not in any list.</div>';
     }
+    let html = '<div class="table-responsive p-2"><table class="table table-sm mb-0"><thead><tr><th>List</th></tr></thead><tbody>';
+    lists.forEach(function(l) {
+        html += `<tr>
+            <td>
+                <a href="/lists/edit/${l.id}" class="text-decoration-none">
+                    ${l.name}
+                </a>
+            </td>
+        </tr>`;
+    });
+    html += "</tbody></table></div>";
+    return html;
+}
 
-    document.querySelectorAll('.toggle-lists-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            const contactId = btn.getAttribute('data-contact-id');
-            const tr = btn.closest('tr');
-            // Check if an accordion is already open and close if needed
-            if (openAccordionRow && openAccordionRow.previousSibling === tr) {
-                closeAccordionRow();
-                return;
-            }
-            closeAccordionRow(); // Always close before opening
-
-            // Insert details row just after clicked row
-            const newRow = document.createElement('tr');
-            newRow.className = "accordion-row";
-            newRow.innerHTML = `
-                <td colspan="4">
-                    <div class="accordion-content" id="accordion-content-${contactId}">
-                        <em>Loading lists...</em>
-                    </div>
-                </td>
-            `;
-            tr.parentNode.insertBefore(newRow, tr.nextSibling);
-            openAccordionRow = newRow;
-
-            // Fetch lists via AJAX
-            fetch(`/contact/${contactId}/lists`)
-              .then(resp => resp.json())
-              .then(lists => {
-                  const div = document.getElementById('accordion-content-' + contactId);
-                  if (!lists.length) {
-                      div.innerHTML = `<em>This contact is not a member of any lists.</em>`;
-                  } else {
-                      let html = `<strong>Member of:</strong><ul>`;
-                      lists.forEach(l => {
-                          html += `<li><a href="/lists/edit/${l.id}" class="text-primary" style="text-decoration:underline;">${l.name}</a> <small class="text-muted">(${l.owner})</small></li>`;
-                      });
-                      html += `</ul>`;
-                      div.innerHTML = html;
-                  }
-              })
-              .catch(() => {
-                  const div = document.getElementById('accordion-content-' + contactId);
-                  div.innerHTML = `<em>Error loading data...</em>`;
-              });
-        });
+$(document).ready(function() {
+    var table = $('#contacts-table').DataTable({
+        pageLength: 10,
+        lengthChange: false,
+        order: [],
+        columnDefs: [
+            { orderable: false, targets: 0 }
+        ]
     });
 
-    document.body.addEventListener('click', function(e) {
-        if (
-            openAccordionRow &&
-            !e.target.closest('.toggle-lists-btn') &&
-            !e.target.closest('.accordion-content')
-        ) {
-            closeAccordionRow();
-        }
-    }, true);
-
-    // Contact search filtering
-    let searchTimeout = null;
-    const searchBox = document.getElementById('contact-search');
-    searchBox.addEventListener('keyup', function() {
-        clearTimeout(searchTimeout);
-        let q = this.value.trim();
-        if (q.length >= 3) {
-            searchTimeout = setTimeout(function () {
-                // Always go to page 1 for new search
-                window.location.href = updateURLParameter(window.location.href, 'search', q, 'page', 1);
-            }, 300);
-        } else if (q.length === 0) {
-            // Clear the search, also back to page 1
-            window.location.href = updateURLParameter(window.location.href, 'search', '', 'page', 1);
-        }
+    // Use custom search box for DataTables
+    $('#contactSearch').on('input', function() {
+        table.search(this.value).draw();
     });
 
-    // Helper to update a parameter (or remove), keeps others
-    function updateURLParameter(url, param, paramVal, pageParam, pageVal) {
-        let urlObj = new URL(url, window.location.origin);
-        if (paramVal) {
-            urlObj.searchParams.set(param, paramVal);
+    // Add event listener for opening/closing list memberships
+    $('#contacts-table tbody').on('click', 'td.details-control', function() {
+        var tr = $(this).closest('tr');
+        var row = table.row(tr);
+        var contactId = tr.data('contact-id');
+        var icon = $(this).find('i');
+
+        if (row.child.isShown()) {
+            // Hide
+            row.child.hide();
+            tr.removeClass('dt-control');
+            icon.removeClass('fa-angle-up').addClass('fa-angle-down');
         } else {
-            urlObj.searchParams.delete(param);
+            // Show (fetch if necessary)
+            icon.removeClass('fa-angle-down').addClass('fa-spinner fa-spin');
+            fetch(`/contacts/${contactId}/lists`)
+                .then(response => response.json())
+                .then(data => {
+                    row.child(formatLists(data)).show();
+                    tr.addClass('dt-control');
+                    icon.removeClass('fa-spinner fa-spin').addClass('fa-angle-up');
+                })
+                .catch(() => {
+                    row.child('<div class="p-2 text-danger">Failed to load contact lists.</div>').show();
+                    tr.addClass('dt-control');
+                    icon.removeClass('fa-spinner fa-spin').addClass('fa-angle-up');
+                });
         }
-        if (pageParam && pageVal) {
-            urlObj.searchParams.set(pageParam, pageVal);
-        }
-        return urlObj.pathname + urlObj.search;
-    }
-
-    // Set searchbox to current search for UX
-    {% if request.args.get('search') %}
-    searchBox.value = "{{ request.args.get('search')|e }}";
-    {% endif %}
+    });
 });
 </script>
 {% endblock %}

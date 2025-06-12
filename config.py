@@ -2,10 +2,6 @@ import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-
-
-
-
 class Config:
     # Get secret key from environment variable with a fallback for development
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key')

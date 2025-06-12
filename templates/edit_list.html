@@ -15,13 +15,14 @@
                     <div class="text-danger">{{ error }}</div>
                 {% endfor %}
             </div>
-            <div class="col-md-6">
-                {{ form.owner.label(class="form-label") }}
-                {{ form.owner(class="form-control form-control-sm") }}
-                {% for error in form.owner.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                {% endfor %}
-            </div>
+          <div class="col-md-6">
+    {{ form.owner.label(class="form-label") }}
+    {{ form.owner(class="form-select form-select-sm") }}
+    {% for error in form.owner.errors %}
+        <div class="text-danger">{{ error }}</div>
+    {% endfor %}
+</div>
+
         </div>
         <div class="mb-3">
             {{ form.description.label(class="form-label") }}
@@ -30,6 +31,14 @@
                 <div class="text-danger">{{ error }}</div>
             {% endfor %}
         </div>
+
+        <div class="d-flex justify-content-end mt-4">
+            {{ form.hidden_tag() }}
+            {{ form.submit(class="btn btn-success btn-sm") }}
+   </div>
+</div>
+
+
     </form>
 
     <div class="card shadow-sm mb-4"
@@ -62,12 +71,12 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-end mt-4">
-        <form method="POST">
-            {{ form.hidden_tag() }}
-            {{ form.submit(class="btn btn-success btn-sm") }}
-        </form>
-    </div>
+{#    <div class="d-flex justify-content-end mt-4">#}
+{#        <form method="POST">#}
+{#            {{ form.hidden_tag() }}#}
+{#            {{ form.submit(class="btn btn-success btn-sm") }}#}
+{#        </form>#}
+{#    </div>#}
 </div>
 
 <style>
@@ -102,7 +111,7 @@ function renderMembers(page = 1) {
     const end = start + MEMBERS_PER_PAGE;
     const items = membersData.slice(start, end);
 
-    let html = '<table class="table table-sm" id="current-members-table"><thead><tr><th>Name</th><th>Email</th><th>Remove</th></tr></thead><tbody>';
+    let html = '<table class="table table-sm" id="current-members-table"><thead><tr><th>Name</th><th>Email</th><th>Remove from list</th></tr></thead><tbody>';
     for (const c of items) {
         html += `
             <tr data-contact-id="${c.id}">

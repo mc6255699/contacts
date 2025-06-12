@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms.validators import DataRequired, Email, Length, Optional, Regexp
-from wtforms import StringField, TextAreaField, SubmitField
+from wtforms import StringField, TextAreaField, SubmitField, SelectField
 
 class ContactForm(FlaskForm):
     first_name = StringField('First Name', validators=[DataRequired()])
@@ -26,5 +26,6 @@ class ContactForm(FlaskForm):
 class ContactListForm(FlaskForm):
     name = StringField('List Name', validators=[DataRequired(), Length(max=100)])
     description = TextAreaField('Description')
-    owner = StringField('Owner', validators=[DataRequired(), Length(max=120)])
+    owner = SelectField('Owner', validators=[DataRequired()], choices=[], coerce=int)
+
     submit = SubmitField('Save List')

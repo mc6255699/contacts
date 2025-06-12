@@ -28,9 +28,23 @@ class ContactList(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    owner = db.Column(db.String(120), nullable=False)
+    # owner = db.Column(db.String(120), nullable=False)
+    owner_id = db.Column(db.String(64), db.ForeignKey('user.id'), nullable=True)
+    owner = db.relationship('User', back_populates='contact_lists')
+
     contacts = db.relationship(
         'Contact',
         secondary=contact_list_membership,
         backref=db.backref('contact_lists', lazy='dynamic')
     )
+
+
+class User(db.Model):
+    id = db.Column(db.String(64), primary_key=True)  # Azure AD OID
+    name = db.Column(db.String(255))
+    email = db.Column(db.String(255), unique=True, index=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    # relationships -- example for later
+    contact_lists = db.relationship('ContactList', back_populates='owner')
+
